@@ -1,0 +1,12 @@
+---
+- name: Application
+  hosts: node01
+  roles:
+    - application
+
+- name: Apache and postgres
+  hosts: node02
+  become: yes
+  roles:
+    - apache
+    - postgres

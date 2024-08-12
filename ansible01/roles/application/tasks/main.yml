@@ -1,0 +1,65 @@
+---
+- name: Install Docker
+  block:
+    - name: Install additional packets
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        update_cache: yes
+
+    - name: Add Docker GPG Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        keyring: /usr/share/keyrings/docker-archive-keyring.gpg
+
+    - name: Add docker repository
+      apt_repository:
+        repo: >
+          deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg]
+          https://download.docker.com/linux/ubuntu
+          {{ ansible_distribution_release }} stable
+        state: present
+        update_cache: yes
+        filename: docker
+
+    - name: Apt update and install docker
+      apt:
+        name: docker-ce
+        state: latest
+  become: yes
+
+- name: Install docker-compose
+  block:
+    - name: Get latest version docker-compose
+      uri:
+        url: https://api.github.com/repos/docker/compose/releases/latest
+        body_format: json
+      register: page
+
+    - name: Download docker-compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/{{ page.json.tag_name }}/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: 0755
+  become: yes
+
+- name: Deploy
+  block:
+    - name: Copy service and docker-compose files
+      copy:
+        src: "{{ item }}"
+        dest: /home/vagrant/
+      with_items:
+        - "/home/vagrant/services"
+        - "/home/vagrant/docker-compose.yml"
+
+    - name: Deploy services
+      community.docker.docker_compose_v2:
+        project_src: /home/vagrant
+        files:
+          - docker-compose.yml
+  become: yes
